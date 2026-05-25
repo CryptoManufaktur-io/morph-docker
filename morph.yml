@@ -1,0 +1,102 @@
+x-logging: &logging
+  logging:
+    driver: json-file
+    options:
+      max-size: 100m
+      max-file: "3"
+      tag: '{{.ImageName}}|{{.Name}}|{{.ImageFullID}}|{{.FullID}}'
+
+services:
+  geth-init:
+    restart: "no"
+    build:
+      context: ./morph
+      dockerfile: Dockerfile.init
+    image: init:morph
+    pull_policy: never
+    environment:
+      - SNAPSHOT=${SNAPSHOT:-}
+    volumes:
+      - geth-data:/db
+      - jwtsecret:/jwtsecret
+      - /etc/localtime:/etc/localtime:ro
+
+  geth:
+    depends_on:
+      geth-init:
+        condition: service_completed_successfully
+    image: ghcr.io/morph-l2/go-ethereum:${GETH_VERSION}
+    restart: unless-stopped
+    ports:
+      - ${GETH_P2P_PORT:-30303}:30303
+    volumes:
+      - geth-data:/db
+      - jwtsecret:/jwtsecret
+      - ./morph/entrypoint-geth.sh:/entrypoint.sh
+    networks:
+      default:
+        aliases:
+          - ${NETWORK} # This allows multiple Optimism Docker stacks all connected to the same central traefik
+    environment:
+      - MORPH_FLAG=${MORPH_FLAG}
+    entrypoint:
+      - "/bin/sh"
+      - "/entrypoint.sh"
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.${RPC_HOST:-morph}.service=${RPC_HOST:-morph}
+      - traefik.http.routers.${RPC_HOST:-morph}.entrypoints=websecure
+      - traefik.http.routers.${RPC_HOST:-morph}.rule=Host(`${RPC_HOST:-morph}.${DOMAIN}`)
+      - traefik.http.routers.${RPC_HOST:-morph}.tls.certresolver=letsencrypt
+      - traefik.http.routers.${RPC_HOST:-morph}lb.service=${RPC_HOST:-morph}
+      - traefik.http.routers.${RPC_HOST:-morph}lb.entrypoints=websecure
+      - traefik.http.routers.${RPC_HOST:-morph}lb.rule=Host(`${RPC_LB:-morph-lb}.${DOMAIN}`)
+      - traefik.http.routers.${RPC_HOST:-morph}lb.tls.certresolver=letsencrypt
+      - traefik.http.services.${RPC_HOST:-morph}.loadbalancer.server.port=${RPC_PORT:-8545}
+
+      - traefik.http.routers.${WS_HOST:-morphws}.service=${WS_HOST:-morphws}
+      - traefik.http.routers.${WS_HOST:-morphws}.entrypoints=websecure
+      - traefik.http.routers.${WS_HOST:-morphws}.rule=Host(`${WS_HOST:-morphws}.${DOMAIN}`)
+      - traefik.http.routers.${WS_HOST:-morphws}.tls.certresolver=letsencrypt
+      - traefik.http.routers.${WS_HOST:-morphws}lb.service=${WS_HOST:-morphws}
+      - traefik.http.routers.${WS_HOST:-morphws}lb.entrypoints=websecure
+      - traefik.http.routers.${WS_HOST:-morphws}lb.rule=Host(`${WS_LB:-morphws-lb}.${DOMAIN}`)
+      - traefik.http.routers.${WS_HOST:-morphws}lb.tls.certresolver=letsencrypt
+      - traefik.http.services.${WS_HOST:-morphws}.loadbalancer.server.port=${WS_PORT:-8546}
+
+      - metrics.scrape=true
+      - metrics.path=/debug/metrics/prometheus
+      - metrics.port=6060
+      - metrics.network=${NETWORK}
+    <<: *logging
+
+  node:
+    depends_on:
+      geth:
+        condition: service_started
+    image: ghcr.io/morph-l2/node:${NODE_VERSION}
+    restart: unless-stopped
+    ports:
+      - ${NODE_P2P_PORT:-26656}:26656
+    environment:
+      - MORPH_NODE_L2_ETH_RPC=http://${NETWORK}:8545
+      - MORPH_NODE_L2_ENGINE_RPC=http://${NETWORK}:8551
+      - MORPH_NODE_L2_ENGINE_AUTH=/jwtsecret/jwt-secret.txt
+      - MORPH_NODE_L1_ETH_RPC=${L1_ETH_RPC}
+      - MORPH_NODE_L1_CHAIN_ID=${L1_CHAIN_ID}
+      - MORPH_NODE_ROLLUP_ADDRESS=${ROLLUP_CONTRACT}
+      - MORPH_NODE_SYNC_START_HEIGHT=${L1_MSG_START_HEIGHT}
+      - NODE_EXTRA_FLAGS=${NODE_EXTRA_FLAGS:-}
+    volumes:
+      - node-data:/db
+      - jwtsecret:/jwtsecret
+      - ./morph/entrypoint-node.sh:/entrypoint-node.sh
+    entrypoint:
+      - "/bin/sh"
+      - "/entrypoint-node.sh"
+    <<: *logging
+
+volumes:
+  geth-data:
+  node-data:
+  jwtsecret:
