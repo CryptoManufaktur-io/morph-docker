@@ -35,6 +35,8 @@ services:
       - geth-data:/db
       - jwtsecret:/jwtsecret
       - ./morph/entrypoint-geth.sh:/entrypoint.sh
+      - ./data/geth-data/genesis.json:/db/genesis.json
+      - ./data/geth-data/static-nodes.json:/db/static-nodes.json
     networks:
       default:
         aliases:
@@ -93,6 +95,7 @@ services:
       - node-data:/db
       - jwtsecret:/jwtsecret
       - ./morph/entrypoint-node.sh:/entrypoint-node.sh
+      - ./data/node-data/config:/db/config
     entrypoint:
       - "/bin/sh"
       - "/entrypoint-node.sh"
