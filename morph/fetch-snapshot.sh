@@ -52,6 +52,7 @@ __get_snapshot() {
   extract_dir=$(basename "$SNAPSHOT" .tar.gz)
   mv "/db/${extract_dir}/geth" /db
   mv "/db/${extract_dir}/data" /node-db
+  cp /priv_validator_state.json /node-db/data/priv_validator_state.json
 
   if [[ ! -d /db/geth/chaindata ]]; then
     echo "Chaindata isn't in the expected location."

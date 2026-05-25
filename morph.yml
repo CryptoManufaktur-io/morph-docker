@@ -19,6 +19,7 @@ services:
     volumes:
       - geth-data:/db
       - node-data:/node-db
+      - ./morph/priv_validator_state.json:/priv_validator_state.json
       - jwtsecret:/jwtsecret
       - /etc/localtime:/etc/localtime:ro
 
