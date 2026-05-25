@@ -14,6 +14,7 @@ fi
 
 __get_snapshot() {
   __dont_rm=0
+  mkdir -p /db/snapshot
   cd /db/snapshot
   eval "__url=$1"
 #shellcheck disable=SC2154
