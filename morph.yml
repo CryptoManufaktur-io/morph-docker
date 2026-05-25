@@ -18,6 +18,7 @@ services:
       - SNAPSHOT=${SNAPSHOT:-}
     volumes:
       - geth-data:/db
+      - node-data:/node-db
       - jwtsecret:/jwtsecret
       - /etc/localtime:/etc/localtime:ro
 
