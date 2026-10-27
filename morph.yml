@@ -43,6 +43,8 @@ services:
           - ${NETWORK} # This allows multiple Optimism Docker stacks all connected to the same central traefik
     environment:
       - MORPH_FLAG=${MORPH_FLAG}
+      - HTTP_API=${HTTP_API:-}
+      - WS_API=${WS_API:-}
     entrypoint:
       - "/bin/sh"
       - "/entrypoint.sh"

@@ -28,6 +28,8 @@ To update the software, run `./morphd update` and then `./morphd up`
 `custom.yml` is not tracked by git and can be used to override anything in the provided yml files. If you use it,
 add it to `COMPOSE_FILE` in `.env`
 
+The public HTTP/WS APIs do not expose the `debug`, `admin` and `engine` namespaces, since they allow rewinding the chain head, writing files and profiling. To re-enable one without editing any tracked file, set `HTTP_API` and/or `WS_API` in `.env` to the full list including it, for example `HTTP_API=web3,eth,txpool,net,morph,debug`, and re-create the container with `./morphd up`. A value set there replaces the default list entirely.
+
 ## Version
 
 morph Docker uses a semver scheme.
